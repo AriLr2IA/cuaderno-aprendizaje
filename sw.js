@@ -27,7 +27,7 @@ self.addEventListener("fetch", (event) => {
   // la página: internet primero, copia guardada si no hay conexión
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: "no-store" })
         .then((resp) => {
           const copia = resp.clone();
           caches.open(CACHE).then((c) => c.put("./index.html", copia));
@@ -50,6 +50,21 @@ self.addEventListener("fetch", (event) => {
           }
           return resp;
         })
+    )
+  );
+});
+
+// La página pide guardar los archivos que ya cargó (así funciona sin internet desde la segunda vez).
+self.addEventListener("message", (event) => {
+  const datos = event.data;
+  if (!datos || datos.tipo !== "guardar" || !Array.isArray(datos.urls)) return;
+  event.waitUntil(
+    caches.open(CACHE).then((c) =>
+      Promise.all(
+        datos.urls.map((u) =>
+          c.match(u).then((ya) => (ya ? null : c.add(u).catch(() => null)))
+        )
+      )
     )
   );
 });
